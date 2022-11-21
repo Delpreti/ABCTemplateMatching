@@ -2,9 +2,16 @@ import numpy as np
 import cv2
 import random
 
-def similarity(pic1, pic2): # same size pictures
-	dessim_max = 255 * number_pixels
-	dessim = sum(pix_pic1 - pix_pic2) # subtrair as imagens e somar todos os pixels
+def similarity(pic1, pic2):
+	# Verificar se as imagens possuem o mesmo tamanho
+	height1, width1, n1 = pic1.shape
+	height2, width2, n2 = pic2.shape
+	if (height1 != height2) or (width1 != width2) or (n1 != n2):
+		return 0
+	dessim_max = 255 * height1 * width1
+	abdiff = cv2.absdiff(pic1, pic2)
+	dessum = cv2.sumElems(abdiff)
+	dessim = dessum[0] + dessum[1] + dessum[2] # somar os canais RGB
 	return 1 - (dessim / dessim_max)
 
 def randPosition(max_x, max_y):
@@ -32,26 +39,26 @@ class Bee:
 	def test_improve(self, value):
 		if value > self.best:
 			self.best = max(value, self.best)
-			repeats = 0
+			self.repeats = 0
 		else:
-			repeats += 1
+			self.repeats += 1
 
 	def test_around(self, value, other_position):
 		if value > self.best:
 			self.best = max(value, self.best)
 			self.current_pos = other_position
-			repeats = 0
+			self.repeats = 0
 		else:
-			repeats += 1
+			self.repeats += 1
 
 	def rand_around(self):
-		return (self.current_pos[0] + random.randint(-2, 2), self.current_pos[1], random.randint(-2, 2))
+		return (self.current_pos[0] + random.randint(-2, 2), self.current_pos[1] + random.randint(-2, 2))
 
 	def pick(self, emp, bs):
 		weights = [x.best / bs for x in emp]
 		chosen = random.choices(emp, weights)
-		self.current_pos = chosen.current_pos
-		self.best = chosen.best
+		self.current_pos = chosen[0].current_pos
+		self.best = chosen[0].best
 
 
 def myMatch(pic, temp):
@@ -107,7 +114,7 @@ def myMatch(pic, temp):
 			if bee in onlooker:
 				onlooker.remove(bee)
 			if bee in employed:
-				onlooker.remove(bee)
+				employed.remove(bee)
 
 			if bee != best_bee:
 				employed.append(Bee("employed", randPosition(pic_width, pic_height)))
@@ -120,23 +127,25 @@ def myMatch(pic, temp):
 
 def main():
 
-	print(randPosition(20, 30))
-
 	template = cv2.imread("template.png", cv2.IMREAD_UNCHANGED) #cv2.Canny(template, 100, 200)
 	picture = cv2.imread("picture.png", cv2.IMREAD_UNCHANGED)
 	h, w, _ = template.shape
 
-	# Match Template do CV2 pra comparar
+	# Match Template do CV2 para comparar
 	'''
 	matches = cv2.matchTemplate(picture, template, cv2.TM_CCOEFF_NORMED)
 	_, max_val, _, max_loc = cv2.minMaxLoc(matches)
-	color = (255, 0, 0) #blue
+	color = (255, 0, 0)
 	picture = cv2.rectangle(picture, max_loc, (max_loc[0] + w, max_loc[1] + h), color, 2)
 	'''
+
+	# Match Template implementado com algoritmo ABC
 	match = myMatch(picture, template)
-	print(match)
+	color = (255, 0, 0)
+	picture = cv2.rectangle(picture, match, (match[0] + w, match[1] + h), color, 2)
+
 	# Exibe o resultado na tela
-	#cv2.imshow("resultado", picture)
+	cv2.imshow("resultado", picture)
 
 	# Pressione qualquer tecla para sair
 	_ = cv2.waitKey(0)
